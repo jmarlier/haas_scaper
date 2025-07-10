@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite databases
+*.db
+
+# Logs and temporary files
+*.log
+*.json
+*.jsonl
+
+# VSCode workspace files
+.vscode/
+
+# macOS files
+.DS_Store
+
+# Python virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# Scratch or output folders
+crawl_docs_results.json
+crawl_promos_results.json
+crawl_results.json
+url_queue.jsonl
+
+# Files created by editors
+*.swp
+*.swo
