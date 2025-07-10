@@ -1,46 +1,37 @@
-# crawler/queue.py
+from bs4 import BeautifulSoup
+from sqlalchemy.exc import IntegrityError
+from db import get_session
+from models import Machine
 
-import json
-from pathlib import Path
+def parse_machine_page(url: str, html: str) -> None:
+    soup = BeautifulSoup(html, "lxml")
+    name = soup.find("h1").text.strip() if soup.find("h1") else "Unnamed Machine"
+    model = soup.select_one("span.machine-model")
+    model = model.text.strip() if model else None
 
-QUEUE_FILE = Path("url_queue.jsonl")
+    desc_block = soup.select_one("div.machine-description, div.machine-intro")
+    description = desc_block.get_text(separator="\n", strip=True) if desc_block else None
 
-def enqueue(url: str) -> None:
-    with open(QUEUE_FILE, "a", encoding="utf-8") as f:
-        f.write(json.dumps({"url": url}))
-        f.write("\n")  # Assure que chaque URL est bien sur sa propre ligne
+    category = None
+    breadcrumb = soup.select("ul.breadcrumb li")
+    if breadcrumb and len(breadcrumb) > 1:
+        category = breadcrumb[1].text.strip()
 
-def dequeue() -> str | None:
-    if not QUEUE_FILE.exists():
-        return None
+    session = get_session()
+    machine = Machine(
+        name=name,
+        model=model,
+        description=description,
+        category=category,
+        url=url,
+    )
 
-    lines = QUEUE_FILE.read_text(encoding="utf-8").splitlines()
-    while lines:
-        line = lines.pop(0).strip()
-        if not line:
-            continue  # ligne vide → on saute
-
-        try:
-            url = json.loads(line)["url"]
-        except json.JSONDecodeError:
-            print(f"⚠️ Ligne mal formée ignorée : {line}")
-            continue
-
-        # Réécrit le fichier sans la ligne extraite
-        QUEUE_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return url
-
-    return None
-
-def peek_all() -> list[str]:
-    if not QUEUE_FILE.exists():
-        return []
-
-    urls = []
-    for line in QUEUE_FILE.read_text(encoding="utf-8").splitlines():
-        try:
-            data = json.loads(line)
-            urls.append(data["url"])
-        except json.JSONDecodeError:
-            print(f"⚠️ Ligne mal formée ignorée : {line[:100]}")
-    return urls
+    try:
+        session.add(machine)
+        session.commit()
+        print(f"✅ Machine enregistrée : {name}")
+    except IntegrityError:
+        session.rollback()
+        print(f"ℹ️ Machine déjà en base : {url}")
+    finally:
+        session.close()

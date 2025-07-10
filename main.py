@@ -1,4 +1,14 @@
+import asyncio
 import logging
+from crawler.crawler import crawl_url
+from crawler.queue import enqueue, dequeue, peek_all
+from crawler.link_extractor import extract_links
+from parsers.base import detect_template_type
+from parsers.machine import parse_machine_page
+from parsers.promo import parse_promo_page
+from parsers.service_doc import parse_service_doc
+from parsers.pdf_blog_parsers import parse_pdf_links, parse_blog_page
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -7,42 +17,43 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-import httpx
-import random
-import asyncio
-from utils.proxies import get_random_proxy
-from utils.user_agents import get_random_user_agent
-
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 5
-BACKOFF_FACTOR = 1.5
-TIMEOUT = 20
+async def main():
+    enqueue("https://www.haascnc.com/index.html?locale=en")
+    visited = set()
 
-semaphore = asyncio.Semaphore(5)  # Limite à 5 req/s
+    while True:
+        url = dequeue()
+        if not url or url in visited:
+            break
 
-async def crawl_url(url: str) -> str | None:
-    headers = {
-        "User-Agent": get_random_user_agent(),
-        "Accept": "text/html,application/xhtml+xml",
-    }
+        html = await crawl_url(url)
+        if not html:
+            continue
 
-    for attempt in range(1, MAX_RETRIES + 1):
-        proxy = get_random_proxy()
         try:
-            async with semaphore:
-                async with httpx.AsyncClient(proxies=proxy, timeout=TIMEOUT, follow_redirects=True) as client:
-                    logger.debug(f"Requesting {url} [Try {attempt}] via {proxy}")
-                    response = await client.get(url, headers=headers)
-                    if response.status_code == 200:
-                        return response.text
-                    elif response.status_code in (429, 500, 502, 503, 504):
-                        raise httpx.HTTPStatusError(f"Retryable status code: {response.status_code}", request=response.request, response=response)
+            page_type = detect_template_type(url, html)
+            logger.info(f"Type détecté pour {url} : {page_type}")
 
-        except (httpx.RequestError, httpx.HTTPStatusError) as e:
-            wait_time = BACKOFF_FACTOR ** attempt
-            logger.warning(f"Attempt {attempt} failed for {url}: {e}. Retrying in {wait_time:.1f}s...")
-            await asyncio.sleep(wait_time)
+            parse_pdf_links(url, html)
 
-    logger.error(f"Failed to fetch {url} after {MAX_RETRIES} attempts.")
-    return None
+            if page_type == "machine":
+                parse_machine_page(url, html)
+            elif page_type == "promo":
+                parse_promo_page(url, html)
+            elif page_type == "service-doc":
+                parse_service_doc(url, html)
+            elif page_type == "blog":
+                parse_blog_page(url, html)
+
+        except Exception as e:
+            logger.warning(f"Erreur de détection ou parsing pour {url} : {e}")
+
+        visited.add(url)
+        for link in extract_links(url, html):
+            if link not in visited and link not in peek_all():
+                enqueue(link)
+
+if __name__ == "__main__":
+    asyncio.run(main())
