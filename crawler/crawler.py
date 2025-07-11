@@ -14,18 +14,18 @@ async def crawl_url(url: str) -> None:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
             print(f"✅ {url} - {response.status_code}")
-            print(response.text[:500])  # aperçu HTML (optionnel)
+            print(response.text[:500])  # HTML preview (optional)
 
-            print("\n🔗 Liens internes détectés :")
+            print("\n🔗 Internal links detected:")
             links = extract_links(url, response.text)
             for link in links:
                 print(link)
-            return response.text  # ✅ retourne le HTML
+            return response.text  # ✅ return HTML
         except httpx.HTTPStatusError as e:
-            print(f"❌ Erreur HTTP {e.response.status_code} pour {url}")
+            print(f"❌ HTTP Error {e.response.status_code} for {url}")
         except Exception as e:
-            print(f"❌ Erreur générale pour {url} : {e}")
-            return None  # si une erreur a eu lieu
+            print(f"❌ General error for {url} : {e}")
+            return None  # if an error occurred
         
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -39,11 +39,11 @@ def extract_links(base_url: str, html: str) -> list[str]:
         if href.startswith("#") or "javascript:" in href:
             continue
 
-        # Convertir lien relatif → absolu
+        # Convert relative link to absolute
         full_url = urljoin(base_url, href)
 
-        # Garder uniquement les pages internes en anglais
+        # Keep only internal English pages
         if full_url.startswith("https://www.haascnc.com/") and "/fr/" not in full_url:
             links.append(full_url)
 
-    return list(set(links))  # supprimer les doublons
+    return list(set(links))  # remove duplicates

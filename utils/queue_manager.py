@@ -97,7 +97,7 @@ class URLQueue:
 
 def is_ignored_url(url: str) -> bool:
     """
-    Retourne True si l'URL doit être ignorée (tooling store, vidéos, myhaas, non-anglais, etc.)
+    Returns True if the URL should be ignored (tooling store, videos, myhaas, non-English, etc.)
     """
     IGNORED_PATTERNS = [
         "/videos/", "/video/", "/community/", "/myhaas", "/tooling/", "/store/", "/shop/", "/cart/", "/checkout/",

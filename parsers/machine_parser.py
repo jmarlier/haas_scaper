@@ -21,15 +21,15 @@ def extract_machine_links(html: str) -> List[str]:
 def parse_machine_page(url: str, html: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
 
-    # Titre principal
+    # Main title
     title = soup.find("h1")
     title = title.get_text(strip=True) if title else ""
 
-    # Sous-titre ou description
+    # Subtitle or description
     subtitle_tag = soup.find("h2")
     subtitle = subtitle_tag.get_text(strip=True) if subtitle_tag else ""
 
-    # Spécifications
+    # Specifications
     specs = {}
     spec_section = soup.select_one(".specifications, .spec-table, table")
     if spec_section:
@@ -41,7 +41,7 @@ def parse_machine_page(url: str, html: str) -> dict:
                 value = cols[1].get_text(strip=True)
                 specs[key] = value
 
-    # Image principale
+    # Main image
     image_url = ""
     img_tag = soup.select_one(".product-hero img") or soup.find("img")
     if img_tag and img_tag.get("src"):
@@ -58,7 +58,7 @@ def parse_machine_page(url: str, html: str) -> dict:
                 pdf_url = "https://www.haascnc.com" + pdf_url
             break
 
-    # Texte promo éventuel
+    # Optional promo text
     promo_text = ""
     promo = soup.select_one(".promo-banner")
     if promo:

@@ -7,7 +7,7 @@ def parse_promo_page(url: str, html: str) -> None:
     soup = BeautifulSoup(html, "lxml")
     
     title = soup.find("h1")
-    title = title.text.strip() if title else "(Promo sans titre)"
+    title = title.text.strip() if title else "(Untitled Promo)"
 
     content_div = soup.select_one("div.promotion-wrapper")
     if not content_div:
@@ -25,9 +25,9 @@ def parse_promo_page(url: str, html: str) -> None:
     try:
         session.add(promo)
         session.commit()
-        print(f"✅ Promo enregistrée : {title}")
+        print(f"✅ Promo saved: {title}")
     except IntegrityError:
         session.rollback()
-        print(f"ℹ️ Promo déjà en base : {url}")
+        print(f"ℹ️ Promo already in database: {url}")
     finally:
         session.close()

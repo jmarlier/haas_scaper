@@ -1,51 +1,56 @@
-import os
+import pytest
+from utils.queue_manager import URLQueue
 import sqlite3
-from utils.queue_manager import URLQueue, DB_PATH
-from db.models import init_db
+import os
 
-def test_queue_add_and_status():
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
-    init_db()
-    queue = URLQueue()
+def make_queue():
+    # Use an in-memory SQLite DB for isolation
+    return URLQueue(db_path=":memory:")
 
-    url = "https://www.haascnc.com/machines/vf-series/vf-2.html"
+def test_add_and_is_known():
+    queue = make_queue()
+    url = "https://www.haascnc.com/machines/vf-2.html"
+    assert not queue.is_known(url)
     queue.add_url(url)
     assert queue.is_known(url)
 
-    queue.mark_done(url)
-    conn = sqlite3.connect(DB_PATH)
-    status = conn.execute("SELECT status FROM url_queue WHERE url = ?", (url,)).fetchone()[0]
-    assert status == "done"
-
-
-# Test that mark_failed updates status and reason
-def test_queue_mark_failed():
-    init_db()
-    queue = URLQueue()
-
-    url = "https://www.haascnc.com/machines/rotaries-indexers.html"
+def test_mark_done_and_failed():
+    queue = make_queue()
+    url = "https://www.haascnc.com/machines/vf-2.html"
     queue.add_url(url)
-    queue.mark_failed(url, reason="timeout")
+    queue.mark_done(url)
+    # Should not be in next batch
+    assert url not in queue.get_next_batch()
+    queue.mark_failed(url, reason="test fail")
+    # Should still not be in next batch
+    assert url not in queue.get_next_batch()
 
-    conn = sqlite3.connect(DB_PATH)
-    row = conn.execute("SELECT status, reason FROM url_queue WHERE url = ?", (url,)).fetchone()
-    assert row[0] == "failed"
-    assert row[1] == "timeout"
+def test_mark_requeued():
+    queue = make_queue()
+    url = "https://www.haascnc.com/machines/vf-2.html"
+    queue.add_url(url)
+    queue.mark_failed(url, reason="fail")
+    queue.mark_requeued(url)
+    # Should be back in next batch
+    assert url in queue.get_next_batch()
 
-
-# Test that get_next_batch returns only queued URLs
-def test_get_next_batch_returns_queued_only():
-    init_db()
-    queue = URLQueue()
-
-    urls = [
-        "https://www.haascnc.com/machines/lathe.html",
-        "https://www.haascnc.com/machines/mill.html"
-    ]
+def test_get_next_batch_and_count_by_status():
+    queue = make_queue()
+    urls = [f"https://www.haascnc.com/machines/vf-{i}.html" for i in range(5)]
     for url in urls:
         queue.add_url(url)
+    batch = queue.get_next_batch(limit=3)
+    assert len(batch) == 3
+    stats = queue.count_by_status()
+    assert stats.get("queued", 0) >= 2
 
-    batch = queue.get_next_batch(limit=1)
-    assert len(batch) == 1
-    assert batch[0] in urls
+def test_get_failed_urls():
+    queue = make_queue()
+    urls = [f"https://www.haascnc.com/machines/vf-{i}.html" for i in range(3)]
+    for url in urls:
+        queue.add_url(url)
+        queue.mark_failed(url, reason="fail")
+    failed = queue.get_failed_urls(limit=2)
+    assert len(failed) == 2
+    for url in failed:
+        assert url.startswith("https://www.haascnc.com/machines/vf-")

@@ -1,4 +1,6 @@
 import sqlite3
+from sqlalchemy.orm import declarative_base
+Base = declarative_base()
 
 DB_PATH = "haasSiteData.db"
 

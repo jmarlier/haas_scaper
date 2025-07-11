@@ -29,9 +29,9 @@ def parse_machine_page(url: str, html: str) -> None:
     try:
         session.add(machine)
         session.commit()
-        print(f"✅ Machine enregistrée : {name}")
+        print(f"✅ Machine saved: {name}")
     except IntegrityError:
         session.rollback()
-        print(f"ℹ️ Machine déjà en base : {url}")
+        print(f"ℹ️ Machine already in database: {url}")
     finally:
         session.close()

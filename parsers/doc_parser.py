@@ -5,8 +5,7 @@ from typing import Dict
 
 def parse_service_doc_page(url: str, html: str) -> Dict:
     """
-    Parse une page de document de service (guide, alarm, PDF...) Haas.
-    Extrait le titre, la description et le lien PDF s’il existe.
+    Parse a Haas service document page (guide, alarm, PDF...). Extracts the title, description, and PDF link if present.
     """
     soup = BeautifulSoup(html, "html.parser")
 

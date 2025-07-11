@@ -7,7 +7,7 @@ def parse_service_doc(url: str, html: str) -> None:
     soup = BeautifulSoup(html, "lxml")
 
     title = soup.find("h1")
-    title = title.text.strip() if title else "(Document sans titre)"
+    title = title.text.strip() if title else "(Untitled Document)"
 
     main_content = soup.select_one("div.main-content") or soup.select_one("article") or soup.select_one("main")
     content = main_content.get_text(separator="\n", strip=True) if main_content else ""
@@ -25,9 +25,9 @@ def parse_service_doc(url: str, html: str) -> None:
     try:
         session.add(doc)
         session.commit()
-        print(f"✅ Document enregistré : {title}")
+        print(f"✅ Document saved: {title}")
     except IntegrityError:
         session.rollback()
-        print(f"ℹ️ Document déjà en base : {url}")
+        print(f"ℹ️ Document already in database: {url}")
     finally:
         session.close()

@@ -14,9 +14,9 @@ if queue_file.exists():
             if "url" in obj and isinstance(obj["url"], str):
                 cleaned_lines.append(json.dumps({"url": obj["url"]}))
         except json.JSONDecodeError:
-            print(f"⚠️ Ligne ignorée (malformée) : {line}")
+            print(f"⚠️ Ignored line (malformed): {line}")
 
     queue_file.write_text("\n".join(cleaned_lines) + "\n", encoding="utf-8")
-    print(f"✅ Nettoyage terminé : {len(cleaned_lines)} lignes valides conservées.")
+    print(f"✅ Cleaning complete: {len(cleaned_lines)} valid lines kept.")
 else:
-    print("❌ Le fichier 'url_queue.jsonl' est introuvable.")
+    print("❌ The file 'url_queue.jsonl' was not found.")

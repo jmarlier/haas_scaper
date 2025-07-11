@@ -39,16 +39,16 @@ async def fetch_limited(url, *args, **kwargs):
 def save_data_if_valid(page_type, data, url):
     if page_type == "service" and "pdf_url" in data:
         save_service_data(data)
-        logger.info(f"📘 Document technique enregistré : {url}")
+        logger.info(f"📘 Technical document saved: {url}")
     else:
-        logger.warning(f"⚠️ Données docs non reconnues pour {url}")
+        logger.warning(f"⚠️ Docs data not recognized for {url}")
 
 async def crawl_docs(dry_run=DRY_RUN):
-    print("🔧 Initialisation de la base et de la queue...")
+    print("🔧 Initializing the database and queue...")
     init_db()
     queue = URLQueue()
 
-    print("📋 Exploration des pages techniques Haas...")
+    print("📋 Exploring Haas technical pages...")
     links = list(set(DOCS_URLS))
     results = {"service": []}
     n_success, n_failed = 0, 0
@@ -74,7 +74,7 @@ async def crawl_docs(dry_run=DRY_RUN):
         for url, response in zip(urls, responses):
             if response and response.status_code == 200:
                 page_type = detect_page_type(url, response.text)
-                logger.info(f"Type détecté pour {url} : {page_type}")
+                logger.info(f"Detected type for {url}: {page_type}")
                 if page_type == "service":
                     data = parse_page_by_type(page_type, url, response.text)
                     if data and "title" in data:
@@ -84,33 +84,33 @@ async def crawl_docs(dry_run=DRY_RUN):
                             save_data_if_valid(page_type, data, url)
                             queue.mark_done(url)
                         else:
-                            logger.info(f"[DRY RUN] {url} aurait été traité comme document technique.")
+                            logger.info(f"[DRY RUN] {url} would have been processed as a technical document.")
                     else:
-                        logger.warning(f"⚠️ Aucune donnée service enregistrée pour {url}")
+                        logger.warning(f"⚠️ No service data saved for {url}")
                         n_failed += 1
                         if not dry_run:
                             queue.mark_failed(url, reason="no data")
                 else:
-                    logger.warning(f"Type incorrect pour {url} : {page_type}")
+                    logger.warning(f"Incorrect type for {url}: {page_type}")
                     n_failed += 1
                     if not dry_run:
                         queue.mark_failed(url, reason="not service")
             else:
-                logger.error(f"❌ Échec de fetch pour {url}")
+                logger.error(f"❌ Fetch failed for {url}")
                 n_failed += 1
                 if not dry_run:
                     queue.mark_failed(url, reason="fetch failed")
 
         stats = queue.count_by_status()
-        logger.info(f"État de la queue : {stats}")
+        logger.info(f"Queue state: {stats}")
 
     elapsed = time.time() - start_time
-    logger.info(f"Crawl terminé en {elapsed:.1f}s. Succès: {n_success}, Échecs: {n_failed}")
+    logger.info(f"Crawl finished in {elapsed:.1f}s. Success: {n_success}, Failures: {n_failed}")
 
     if EXPORT_JSON:
         with open("crawl_docs_results.json", "w") as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
-        logger.info("Export JSON terminé : crawl_docs_results.json")
+        logger.info("JSON export finished: crawl_docs_results.json")
 
 if __name__ == "__main__":
     asyncio.run(crawl_docs(dry_run=DRY_RUN))
